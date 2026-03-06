@@ -1,0 +1,153 @@
+diff --git a/content/browser/fingerprint/fingerprint_session_manager.h b/content/browser/fingerprint/fingerprint_session_manager.h
+new file mode 100644
+--- /dev/null
++++ b/content/browser/fingerprint/fingerprint_session_manager.h
+@@ -0,0 +1,168 @@
++// Copyright 2024 The Chromium Authors
++// Use of this source code is governed by a BSD-style license that can be
++// found in the LICENSE file.
++
++#ifndef CONTENT_BROWSER_FINGERPRINT_FINGERPRINT_SESSION_MANAGER_H_
++#define CONTENT_BROWSER_FINGERPRINT_FINGERPRINT_SESSION_MANAGER_H_
++
++#include <string>
++#include <vector>
++#include <mutex>
++#include <random>
++
++#include "content/common/content_export.h"
++
++namespace content {
++
++// Fingerprint configuration structure
++// All fields have reasonable defaults for anti-detection
++struct CONTENT_EXPORT FingerprintConfig {
++  // Session identifier for consistent randomization
++  uint64_t session_seed = 0;
++
++  // Navigator properties
++  struct {
++    unsigned int hardware_concurrency = 8;
++    float device_memory = 8.0f;
++    std::string platform = "Win32";
++    std::string user_agent;
++    std::vector<std::string> languages = {"en-US", "en"};
++  } navigator;
++
++  // Canvas fingerprint protection
++  struct {
++    float noise_level = 0.001f;       // % of pixels to modify (0.001 = 0.1%)
++    int noise_amplitude = 2;           // Max change per color channel (+-N)
++  } canvas;
++
++  // WebGL fingerprint spoofing
++  struct {
++    std::string vendor = "Intel Inc.";
++    std::string renderer = "Intel(R) UHD Graphics";
++    std::string version = "WebGL 1.0 (OpenGL ES 2.0 Chromium)";
++    float readpixels_noise = 0.001f;
++  } webgl;
++
++  // Audio fingerprint protection
++  struct {
++    float analyser_noise = 0.0001f;
++    float oscillator_noise = 0.00001f;
++    float compressor_noise = 0.001f;
++  } audio;
++
++  // Screen properties
++  struct {
++    int width = 1920;
++    int height = 1080;
++    int avail_width = 1920;
++    int avail_height = 1040;
++    unsigned int color_depth = 24;
++    float pixel_ratio = 1.0f;
++  } screen;
++
++  // Timezone
++  struct {
++    int offset_minutes = 0;
++    std::string timezone_id = "UTC";
++  } timezone;
++};
++
++// Singleton manager for fingerprint configuration
++// Thread-safe, initialized once at browser startup
++class CONTENT_EXPORT FingerprintSessionManager {
++ public:
++  // Get singleton instance
++  static FingerprintSessionManager& GetInstance();
++
++  // Initialization methods (call once at startup)
++  bool InitFromCommandLine();
++  bool InitFromEnvironment();
++  bool InitFromFile(const std::string& path);
++  bool InitFromJson(const std::string& json);
++
++  // Check if initialized
++  bool IsInitialized() const { return initialized_; }
++
++  // Get full configuration
++  const FingerprintConfig& GetConfig() const;
++
++  // Get session seed for consistent randomization
++  uint64_t GetSessionSeed() const;
++
++  // Get random number generator seeded by session
++  std::mt19937_64& GetGenerator();
++
++  // Navigator getters
++  unsigned int GetHardwareConcurrency() const;
++  float GetDeviceMemory() const;
++  const std::string& GetPlatform() const;
++  const std::string& GetUserAgent() const;
++  const std::vector<std::string>& GetLanguages() const;
++
++  // Canvas getters
++  float GetCanvasNoiseLevel() const;
++  int GetCanvasNoiseAmplitude() const;
++
++  // WebGL getters
++  const std::string& GetWebGLVendor() const;
++  const std::string& GetWebGLRenderer() const;
++  const std::string& GetWebGLVersion() const;
++  float GetWebGLReadPixelsNoise() const;
++
++  // Audio getters
++  float GetAudioAnalyserNoise() const;
++  float GetAudioOscillatorNoise() const;
++  float GetAudioCompressorNoise() const;
++
++  // Screen getters
++  int GetScreenWidth() const;
++  int GetScreenHeight() const;
++  int GetScreenAvailWidth() const;
++  int GetScreenAvailHeight() const;
++  unsigned int GetScreenColorDepth() const;
++  float GetScreenPixelRatio() const;
++
++  // Timezone getters
++  int GetTimezoneOffsetMinutes() const;
++  const std::string& GetTimezoneId() const;
++
++ private:
++  FingerprintSessionManager();
++  ~FingerprintSessionManager() = default;
++
++  // Non-copyable
++  FingerprintSessionManager(const FingerprintSessionManager&) = delete;
++  FingerprintSessionManager& operator=(const FingerprintSessionManager&) = delete;
++
++  // Internal helpers
++  void GenerateDefaultConfig();
++
++  mutable std::mutex mutex_;
++  FingerprintConfig config_;
++  std::mt19937_64 generator_;
++  bool initialized_ = false;
++};
++
++}  // namespace content
++
++#endif  // CONTENT_BROWSER_FINGERPRINT_FINGERPRINT_SESSION_MANAGER_H_

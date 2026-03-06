@@ -1,0 +1,11 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator.idl b/third_party/blink/renderer/core/frame/navigator.idl
+index 1234567..abcdefg 100644
+--- a/third_party/blink/renderer/core/frame/navigator.idl
++++ b/third_party/blink/renderer/core/frame/navigator.idl
+@@ -42,7 +42,6 @@ interface Navigator {
+     readonly attribute DOMString platform;
+     readonly attribute DOMString product;
+     readonly attribute DOMString productSub;
+-    [Measure] readonly attribute boolean webdriver;
+     readonly attribute DOMString vendor;
+     readonly attribute DOMString vendorSub;

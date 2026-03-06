@@ -1,0 +1,12 @@
+diff --git a/content/browser/renderer_host/render_frame_host_impl.cc b/content/browser/renderer_host/render_frame_host_impl.cc
+index 5678901..opqrstu 100644
+--- a/content/browser/renderer_host/render_frame_host_impl.cc
++++ b/content/browser/renderer_host/render_frame_host_impl.cc
+@@ -3456,7 +3456,10 @@ void RenderFrameHostImpl::GetInterfaceProvider(
+ 
+ void RenderFrameHostImpl::SetAutomationControlEnabled(bool enabled) {
+   // Prevent automation detection - ALWAYS set to false
+-  GetAssociatedLocalFrame()->SetAutomationControlEnabled(enabled);
++  GetAssociatedLocalFrame()->SetAutomationControlEnabled(false);
++  // Original: GetAssociatedLocalFrame()->SetAutomationControlEnabled(enabled);
+ }

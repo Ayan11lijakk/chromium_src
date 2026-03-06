@@ -1,0 +1,16 @@
+diff --git a/content/public/common/content_switches.cc b/content/public/common/content_switches.cc
+index 3333333..4444444 100644
+--- a/content/public/common/content_switches.cc
++++ b/content/public/common/content_switches.cc
+@@ -1150,4 +1150,12 @@ const char kWithoutMojoRenderer[] = "without-mojo-renderer";
+ // the command line flags.
+ const char kWithoutMojoRenderer[] = "without-mojo-renderer";
+ 
++// Fingerprint spoofing configuration
++// Path to JSON config file for fingerprint session
++const char kFingerprintConfig[] = "fingerprint-config";
++
++// Session seed for consistent fingerprint randomization
++const char kFingerprintSeed[] = "fingerprint-seed";
++
+ }  // namespace switches

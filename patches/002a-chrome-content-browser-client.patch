@@ -1,0 +1,20 @@
+diff --git a/chrome/browser/chrome_content_browser_client.cc b/chrome/browser/chrome_content_browser_client.cc
+index 4567890..defghij 100644
+--- a/chrome/browser/chrome_content_browser_client.cc
++++ b/chrome/browser/chrome_content_browser_client.cc
+@@ -1234,15 +1234,6 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
+   }
+ #endif
+ 
+-  // If we're in automation mode, don't add the infobar saying Chrome is being
+-  // controlled by automated test software.
+-  if (command_line->HasSwitch(switches::kEnableAutomation)) {
+-    base::CommandLine::ForCurrentProcess()->AppendSwitch(
+-        switches::kDisableInfoBars);
+-    // Set automation mode in the renderer
+-    command_line->AppendSwitch(switches::kForceDevToolsAvailable);
+-  }
+-
+   // If this is a Web App launch and its display mode is 'standalone', then
+   // add a switch to the renderer process. This will prevent the toolbar from
+   // showing up.

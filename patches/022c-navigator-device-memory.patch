@@ -1,0 +1,31 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator_device_memory.cc b/third_party/blink/renderer/core/frame/navigator_device_memory.cc
+index 5555555..6666666 100644
+--- a/third_party/blink/renderer/core/frame/navigator_device_memory.cc
++++ b/third_party/blink/renderer/core/frame/navigator_device_memory.cc
+@@ -7,13 +7,23 @@
+ #include "third_party/blink/public/common/device_memory/approximated_device_memory.h"
+ #include "third_party/blink/renderer/core/frame/settings.h"
+ 
++// Fingerprint protection integration
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++
+ 
+ namespace blink {
+ 
+ float NavigatorDeviceMemory::deviceMemory() const {
+   // ==========================================================================
+-  // DEVICE MEMORY FINGERPRINT SPOOFING
+-  // Return spoofed value from profile instead of actual RAM
++  // DEVICE MEMORY FINGERPRINT PROTECTION
++  // Return spoofed value from FingerprintSessionManager
++  // Prevents fingerprinting via RAM detection
+   // ==========================================================================
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) {
++    return session.GetDeviceMemory();
++  }
++
++  // Fallback: return common value
+   return 8.0f;  // Common default (8GB)
+   // Original: return ApproximatedDeviceMemory::GetApproximatedDeviceMemory();
+ }

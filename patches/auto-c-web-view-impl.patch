@@ -1,0 +1,15 @@
+diff --git a/third_party/blink/renderer/core/exported/web_view_impl.cc b/third_party/blink/renderer/core/exported/web_view_impl.cc
+index 6789012..pqrstuv 100644
+--- a/third_party/blink/renderer/core/exported/web_view_impl.cc
++++ b/third_party/blink/renderer/core/exported/web_view_impl.cc
+@@ -1834,8 +1834,12 @@ void WebViewImpl::DidAttachLocalMainFrame() {
+   dev_tools_emulator_->MainFrameScrollOrScaleChanged();
+ }
+ 
+-void WebViewImpl::SetAutomationControlEnabled(bool enabled) {
+-  automation_control_enabled_ = enabled;
++void WebViewImpl::SetAutomationControlEnabled(bool enabled) {
++  // Stealth Mode: Always report automation as disabled
++  automation_control_enabled_ = false;
++  // Original: automation_control_enabled_ = enabled;
+ }

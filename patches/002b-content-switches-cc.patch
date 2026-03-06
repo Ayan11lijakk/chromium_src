@@ -1,0 +1,15 @@
+diff --git a/content/public/common/content_switches.cc b/content/public/common/content_switches.cc
+index 5678901..efghijk 100644
+--- a/content/public/common/content_switches.cc
++++ b/content/public/common/content_switches.cc
+@@ -156,10 +156,6 @@ const char kEnableAccessibilityObjectModel[] =
+ const char kEnableAggressiveDOMStorageFlushing[] =
+     "enable-aggressive-domstorage-flushing";
+ 
+-// Enable automation mode for testing. This will add an infobar to pages being
+-// controlled by automated test software.
+-const char kEnableAutomation[] = "enable-automation";
+-
+ // Enables user-initiated background HTML5 canvas 2D context's transfer to
+ // ImageBitmap.
+ const char kEnableCanvas2DImageChromium[] = "enable-canvas-2d-image-chromium";

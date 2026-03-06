@@ -1,0 +1,25 @@
+diff --git a/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc b/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
+index eeeeeee..fffffff 100644
+--- a/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
++++ b/third_party/blink/renderer/modules/webgl/webgl_debug_renderer_info.cc
+@@ -8,6 +8,9 @@
+ #include "third_party/blink/renderer/modules/webgl/webgl_rendering_context_base.h"
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ 
++// Fingerprint protection
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++
+ 
+ namespace blink {
+ 
+@@ -31,6 +34,14 @@ WebGLExtensionName WebGLDebugRendererInfo::GetName() const {
+ 
+ bool WebGLDebugRendererInfo::Supported(WebGLRenderingContextBase* context) {
+   // ==========================================================================
+-  // WEBGL DEBUG RENDERER INFO EXTENSION
++  // WEBGL DEBUG RENDERER INFO EXTENSION - ALWAYS ENABLED
+   // We allow this extension because we spoof the values anyway
++  // Disabling it would be a detection vector itself
+   // ==========================================================================
+   return true;
+ }

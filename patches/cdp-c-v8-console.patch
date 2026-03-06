@@ -1,0 +1,14 @@
+diff --git a/v8/src/inspector/v8-console.cc b/v8/src/inspector/v8-console.cc
+index 7890123..ghijklm 100644
+--- a/v8/src/inspector/v8-console.cc
++++ b/v8/src/inspector/v8-console.cc
+@@ -649,6 +649,11 @@ void V8Console::Profile(const v8::debug::ConsoleCallArguments& info,
+   }
+ }
+ 
++  // CDP Stealth: Disable profiling in stealth mode
++  if (true /* stealth mode always on */) {
++    return;
++  }
++
+   String title = consoleContext.context_name;

@@ -1,0 +1,59 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator.cc b/third_party/blink/renderer/core/frame/navigator.cc
+index 1111111..2222222 100644
+--- a/third_party/blink/renderer/core/frame/navigator.cc
++++ b/third_party/blink/renderer/core/frame/navigator.cc
+@@ -36,6 +36,9 @@
+ #include "third_party/blink/renderer/platform/language.h"
+ #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
+ 
++// Fingerprint protection integration
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++
+ 
+ namespace blink {
+ 
+@@ -125,10 +128,24 @@ String Navigator::productSub() const {
+ 
+ bool Navigator::webdriver() const {
+   // ==========================================================================
+-  // WEBDRIVER DETECTION PROTECTION
+-  // Always return false to prevent automation detection
++  // WEBDRIVER DETECTION PROTECTION - CRITICAL
++  // Always return false to prevent automation detection via navigator.webdriver
++  // This is one of the most commonly checked bot detection vectors
+   // ==========================================================================
+   return false;
++  // Original implementation:
++  // if (!GetFrame())
++  //   return false;
++  // Document* document = GetFrame()->GetDocument();
++  // return document && document->IsWebDriver();
++}
++
++unsigned Navigator::hardwareConcurrency() const {
++  // Use FingerprintSessionManager for consistent spoofed value
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  return session.GetHardwareConcurrency();
++  // Original: return base::SysInfo::NumberOfProcessors();
+ }
+ 
+ String Navigator::language() {
+@@ -137,6 +154,15 @@ String Navigator::language() {
+ 
+ Vector<String> Navigator::languages() {
+   // ==========================================================================
++  // LANGUAGE FINGERPRINT SPOOFING
++  // Use profile-defined languages for consistency
++  // ==========================================================================
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  const auto& spoofed_langs = session.GetLanguages();
++  if (!spoofed_langs.empty()) {
++    Vector<String> result;
++    for (const auto& lang : spoofed_langs) {
++      result.push_back(String::FromUTF8(lang.c_str()));
++    }
++    return result;
++  }
+   // Fallback to original implementation if no spoofed languages
+   return NavigatorLanguage::languages();
+ }

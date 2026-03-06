@@ -1,0 +1,37 @@
+diff --git a/third_party/blink/renderer/core/frame/window.cc b/third_party/blink/renderer/core/frame/window.cc
+index ccccccc..ddddddd 100644
+--- a/third_party/blink/renderer/core/frame/window.cc
++++ b/third_party/blink/renderer/core/frame/window.cc
+@@ -80,6 +80,9 @@
+ #include "v8/include/v8.h"
+ #include "third_party/blink/public/common/page/page_zoom.h"
+ 
++// Fingerprint protection integration
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++
+ 
+ namespace blink {
+ 
+@@ -450,6 +453,16 @@ double LocalDOMWindow::devicePixelRatio() const {
+   // DEVICE PIXEL RATIO FINGERPRINT SPOOFING
+   // ==========================================================================
+   auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) {
++    return static_cast<double>(session.GetScreenPixelRatio());
++  }
+   return 1.0;
+ }
+ 
++int LocalDOMWindow::outerWidth() const {
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) return session.GetScreenWidth();
++  return 1920;
++}
++
++int LocalDOMWindow::outerHeight() const {
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) return session.GetScreenHeight();
++  return 1080;
++}
++
+ void LocalDOMWindow::focus(v8::Isolate* isolate) {

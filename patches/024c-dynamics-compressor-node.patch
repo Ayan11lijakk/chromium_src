@@ -1,0 +1,45 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc
+index 5555555..6666666 100644
+--- a/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc
++++ b/third_party/blink/renderer/modules/webaudio/dynamics_compressor_node.cc
+@@ -30,6 +30,10 @@
+ #include "third_party/blink/renderer/platform/audio/dynamics_compressor.h"
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ 
++// Fingerprint protection integration
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++#include <random>
++
+ 
+ namespace blink {
+ 
+@@ -156,8 +160,33 @@ void DynamicsCompressorHandler::Process(uint32_t frames_to_process) {
+                               frames_to_process);
+ }
+ 
++// =============================================================================
++// DYNAMICS COMPRESSOR FINGERPRINT PROTECTION
++// =============================================================================
++
++namespace {
++
++float GetCompressorReductionNoise() {
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  float noise_level = session.GetAudioCompressorNoise();
++  uint64_t seed = session.GetSessionSeed();
++  if (noise_level <= 0) return 0.0f;
++  thread_local std::mt19937_64 gen(seed + 0x434F4D50);
++  std::uniform_real_distribution<float> dist(-noise_level, noise_level);
++  return dist(gen);
++}
++
++}  // namespace
++
+ float DynamicsCompressorHandler::ReductionValue() const {
+-  return reduction_;
++  float reduction = reduction_;
++  if (reduction != 0.0f) {
++    reduction *= (1.0f + GetCompressorReductionNoise());
++  }
++  return reduction;
+ }

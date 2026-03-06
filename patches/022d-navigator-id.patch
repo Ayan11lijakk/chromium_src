@@ -1,0 +1,59 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator_id.cc b/third_party/blink/renderer/core/frame/navigator_id.cc
+index 7777777..8888888 100644
+--- a/third_party/blink/renderer/core/frame/navigator_id.cc
++++ b/third_party/blink/renderer/core/frame/navigator_id.cc
+@@ -35,16 +35,32 @@
+ #include "third_party/blink/renderer/core/frame/settings.h"
+ #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
+ 
++// Fingerprint protection integration
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++
+ 
+ namespace blink {
+ 
+ String NavigatorID::platform(const LocalFrame* frame) {
+   // ==========================================================================
+-  // PLATFORM FINGERPRINT SPOOFING
+-  // Return spoofed platform string from profile
++  // PLATFORM FINGERPRINT PROTECTION
++  // Return spoofed platform string from FingerprintSessionManager
++  // Prevents OS detection via navigator.platform
+   // ==========================================================================
+-  // Common platform strings:
+-  // "Win32" (Windows), "MacIntel" (macOS), "Linux x86_64" (Linux)
+-  return "Win32";  // Default spoofed value
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) {
++    const std::string& platform = session.GetPlatform();
++    if (!platform.empty()) {
++      return String::FromUTF8(platform.c_str());
++    }
++  }
++
++  // Fallback to Win32 (most common)
++  return "Win32";
++
++  // Original implementation:
++  // return NavigatorBase::GetReducedNavigatorPlatform() ?
++  //     String(NavigatorBase::GetReducedNavigatorPlatform()) :
++  //     GetNavigatorPlatform();
+ }
+ 
+ String NavigatorID::userAgent(const LocalFrame* frame) {
+@@ -52,6 +68,15 @@ String NavigatorID::userAgent(const LocalFrame* frame) {
+   // USER AGENT FINGERPRINT SPOOFING
+   // Use spoofed user agent from profile if available
+   // ==========================================================================
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) {
++    const std::string& ua = session.GetUserAgent();
++    if (!ua.empty()) {
++      return String::FromUTF8(ua.c_str());
++    }
++  }
++
++  // Fallback to original implementation
+   if (!frame)
+     return String();
+   return frame->Loader().UserAgent();

@@ -1,0 +1,15 @@
+diff --git a/content/public/common/content_switches.h b/content/public/common/content_switches.h
+index 5555555..6666666 100644
+--- a/content/public/common/content_switches.h
++++ b/content/public/common/content_switches.h
+@@ -320,6 +320,10 @@ CONTENT_EXPORT extern const char kVideoImageTextureTarget[];
+ CONTENT_EXPORT extern const char kVideoUnderflowThresholdMs[];
+ CONTENT_EXPORT extern const char kWithoutMojoRenderer[];
+ 
++// Fingerprint spoofing
++CONTENT_EXPORT extern const char kFingerprintConfig[];
++CONTENT_EXPORT extern const char kFingerprintSeed[];
++
+ }  // namespace switches
+ 
+ #endif  // CONTENT_PUBLIC_COMMON_CONTENT_SWITCHES_H_

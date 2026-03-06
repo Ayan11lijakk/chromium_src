@@ -1,0 +1,49 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/oscillator_node.cc b/third_party/blink/renderer/modules/webaudio/oscillator_node.cc
+index 3333333..4444444 100644
+--- a/third_party/blink/renderer/modules/webaudio/oscillator_node.cc
++++ b/third_party/blink/renderer/modules/webaudio/oscillator_node.cc
+@@ -32,6 +32,10 @@
+ #include "third_party/blink/renderer/platform/audio/audio_utilities.h"
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ 
++// Fingerprint protection integration
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++#include <random>
++
+ 
+ namespace blink {
+ 
+@@ -178,6 +182,32 @@ bool OscillatorHandler::PropagatesSilence() const {
+   return !IsPlayingOrScheduled() || HasFinished();
+ }
+ 
++// =============================================================================
++// OSCILLATOR FINGERPRINT PROTECTION
++// =============================================================================
++
++namespace {
++
++float GetOscillatorFrequencyNoise() {
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  float noise_level = session.GetAudioOscillatorNoise();
++  uint64_t seed = session.GetSessionSeed();
++  if (noise_level <= 0) return 0.0f;
++  thread_local std::mt19937_64 gen(seed + 0x4F534349);
++  std::uniform_real_distribution<float> dist(-noise_level, noise_level);
++  return dist(gen);
++}
++
++}  // namespace
++
+ void OscillatorHandler::Process(uint32_t frames_to_process) {
+   AudioBus* output_bus = Output(0).Bus();
+ 
+@@ -215,6 +245,10 @@ void OscillatorHandler::Process(uint32_t frames_to_process) {
+   for (unsigned i = 0; i < frames_to_process; ++i) {
+     float frequency = narrow_cast<float>(frequency_values[i]);
+ 
++    // Apply imperceptible frequency variation for fingerprint protection
++    frequency *= (1.0f + GetOscillatorFrequencyNoise());
++
+     float sample;
+     if (type_ == OscillatorType::kSine) {

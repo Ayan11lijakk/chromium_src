@@ -1,0 +1,31 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc b/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc
+index 3333333..4444444 100644
+--- a/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc
++++ b/third_party/blink/renderer/core/frame/navigator_concurrent_hardware.cc
+@@ -7,13 +7,23 @@
+ #include "base/system/sys_info.h"
+ #include "third_party/blink/public/common/device_memory/approximated_device_memory.h"
+ 
++// Fingerprint protection integration
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++
+ 
+ namespace blink {
+ 
+ unsigned NavigatorConcurrentHardware::hardwareConcurrency() const {
+   // ==========================================================================
+-  // HARDWARE CONCURRENCY FINGERPRINT SPOOFING
+-  // Return spoofed value from profile instead of actual CPU count
++  // HARDWARE CONCURRENCY FINGERPRINT PROTECTION
++  // Return spoofed value from FingerprintSessionManager
++  // Prevents fingerprinting via CPU core count detection
+   // ==========================================================================
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) {
++    return session.GetHardwareConcurrency();
++  }
++
++  // Fallback: return common value instead of actual
+   return 8;  // Common default
+   // Original: return base::SysInfo::NumberOfProcessors();
+ }

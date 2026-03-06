@@ -1,0 +1,15 @@
+diff --git a/content/browser/devtools/protocol/browser_handler.cc b/content/browser/devtools/protocol/browser_handler.cc
+index 9012345..ijklmno 100644
+--- a/content/browser/devtools/protocol/browser_handler.cc
++++ b/content/browser/devtools/protocol/browser_handler.cc
+@@ -89,10 +89,16 @@ void BrowserHandler::SetWindowBounds(
+   SetWindowBoundsCallback callback) {
+   DevToolsManagerDelegate* delegate =
+       DevToolsManager::GetInstance()->delegate();
++
++  // CDP Stealth: Block window manipulation
++  callback->sendFailure(
++      protocol::Response::ServerError("Window manipulation disabled in stealth mode"));
++  return;
++
+   if (!delegate) {

@@ -1,0 +1,28 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator.h b/third_party/blink/renderer/core/frame/navigator.h
+index 1234567..klmnopq 100644
+--- a/third_party/blink/renderer/core/frame/navigator.h
++++ b/third_party/blink/renderer/core/frame/navigator.h
+@@ -56,6 +56,7 @@ class CORE_EXPORT Navigator : public ScriptWrappable,
+   String productSub() const;
+   String vendor() const;
+   bool webdriver() const;
++  void setWebdriver(bool value);
+ 
+   // NavigatorCookies
+   bool cookieEnabled() const;
+diff --git a/third_party/blink/renderer/core/frame/navigator.cc b/third_party/blink/renderer/core/frame/navigator.cc
+index 0123456..jklmnop 100644
+--- a/third_party/blink/renderer/core/frame/navigator.cc
++++ b/third_party/blink/renderer/core/frame/navigator.cc
+@@ -126,7 +126,14 @@ String Navigator::productSub() const {
+ }
+ 
+ bool Navigator::webdriver() const {
+-  return GetFrame()->GetSettings()->GetWebDriverEnabled();
++  // CDP Stealth: Always return false
++  return false;
++}
++
++void Navigator::setWebdriver(bool value) {
++  // Ignore any attempts to set webdriver flag
+ }

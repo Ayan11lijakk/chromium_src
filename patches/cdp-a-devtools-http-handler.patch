@@ -1,0 +1,15 @@
+diff --git a/content/browser/devtools/devtools_http_handler.cc b/content/browser/devtools/devtools_http_handler.cc
+index 5678901..efghijk 100644
+--- a/content/browser/devtools/devtools_http_handler.cc
++++ b/content/browser/devtools/devtools_http_handler.cc
+@@ -89,6 +89,11 @@ class ServerWrapper : base::RefCountedThreadSafe<ServerWrapper> {
+   }
+ 
+   void StartServer(const net::SocketDescriptor& socket_fd) {
++    // CDP Stealth Mode: Disable DevTools HTTP handler
++    LOG(INFO) << "DevTools HTTP handler disabled for stealth mode";
++    return;
++
+     server_ = std::make_unique<net::HttpServer>(
+         std::make_unique<net::TCPServerSocket>(nullptr, net::NetLogSource()),
+         this);

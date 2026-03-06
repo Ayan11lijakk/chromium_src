@@ -1,0 +1,69 @@
+diff --git a/third_party/blink/renderer/core/frame/screen.cc b/third_party/blink/renderer/core/frame/screen.cc
+index aaaaaaa..bbbbbbb 100644
+--- a/third_party/blink/renderer/core/frame/screen.cc
++++ b/third_party/blink/renderer/core/frame/screen.cc
+@@ -35,6 +35,9 @@
+ #include "third_party/blink/renderer/core/probe/core_probes.h"
+ #include "ui/display/screen_info.h"
+ 
++// Fingerprint protection integration
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++
+ 
+ namespace blink {
+ 
+@@ -66,32 +69,76 @@ LocalFrame* Screen::GetFrame() const {
+ 
+ int Screen::height() const {
+   auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) return session.GetScreenHeight();
+   return 1080;
+ }
+ 
+ int Screen::width() const {
+   auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) return session.GetScreenWidth();
+   return 1920;
+ }
+ 
+ unsigned Screen::colorDepth() const {
+   auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) return session.GetScreenColorDepth();
+   return 24;
+ }
+ 
+ unsigned Screen::pixelDepth() const {
+   auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) return session.GetScreenColorDepth();
+   return 24;
+ }
+ 
+ int Screen::availLeft() const {
+   return 0;
+ }
+ 
+ int Screen::availTop() const {
+   return 0;
+ }
+ 
+ int Screen::availHeight() const {
+   auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) return session.GetScreenAvailHeight();
+   return 1040;
+ }
+ 
+ int Screen::availWidth() const {
+   auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) return session.GetScreenAvailWidth();
+   return 1920;
+ }
+ 
+ bool Screen::isExtended() const {
+   return false;
+ }
+ 
++float Screen::devicePixelRatio() const {
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  if (session.IsInitialized()) return session.GetScreenPixelRatio();
++  return 1.0f;
++}

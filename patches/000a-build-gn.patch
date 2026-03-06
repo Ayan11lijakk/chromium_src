@@ -1,0 +1,14 @@
+diff --git a/content/browser/BUILD.gn b/content/browser/BUILD.gn
+index 1234567..abcdefg 100644
+--- a/content/browser/BUILD.gn
++++ b/content/browser/BUILD.gn
+@@ -1200,6 +1200,9 @@ source_set("browser") {
+     "file_url_loader_factory.h",
+     "find_in_page/find_request_manager.cc",
+     "find_in_page/find_request_manager.h",
++    # Fingerprint spoofing integration
++    "fingerprint/fingerprint_session_manager.cc",
++    "fingerprint/fingerprint_session_manager.h",
+     "font_access/font_access_manager_impl.cc",
+     "font_access/font_access_manager_impl.h",
+     "font_unique_name_lookup/font_unique_name_lookup_service.cc",

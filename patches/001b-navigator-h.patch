@@ -1,0 +1,11 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator.h b/third_party/blink/renderer/core/frame/navigator.h
+index 2345678..bcdefgh 100644
+--- a/third_party/blink/renderer/core/frame/navigator.h
++++ b/third_party/blink/renderer/core/frame/navigator.h
+@@ -65,7 +65,6 @@ class CORE_EXPORT Navigator final : public ScriptWrappable,
+   String platform() const override;
+   String product() const;
+   String productSub() const;
+-  bool webdriver() const;
+   String vendor() const;
+   String vendorSub() const;

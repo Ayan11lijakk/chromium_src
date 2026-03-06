@@ -1,0 +1,17 @@
+diff --git a/chrome/test/chromedriver/chrome_launcher.cc b/chrome/test/chromedriver/chrome_launcher.cc
+index 4567890..nopqrst 100644
+--- a/chrome/test/chromedriver/chrome_launcher.cc
++++ b/chrome/test/chromedriver/chrome_launcher.cc
+@@ -567,9 +567,13 @@ Status LaunchDesktopChrome(
+   }
+ 
+   // Add automation switches
+-  if (capabilities.IsAndroid() || capabilities.IsRemoteBrowser()) {
+-    switches.SetSwitch("enable-automation");
+-  }
++  // REMOVED: Don't add enable-automation flag
++  // if (capabilities.IsAndroid() || capabilities.IsRemoteBrowser()) {
++  //   switches.SetSwitch("enable-automation");
++  // }
++
+   base::CommandLine command(base::CommandLine::NO_PROGRAM);

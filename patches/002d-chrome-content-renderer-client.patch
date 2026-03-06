@@ -1,0 +1,17 @@
+diff --git a/chrome/renderer/chrome_content_renderer_client.cc b/chrome/renderer/chrome_content_renderer_client.cc
+index 7890123..ghijklm 100644
+--- a/chrome/renderer/chrome_content_renderer_client.cc
++++ b/chrome/renderer/chrome_content_renderer_client.cc
+@@ -876,11 +876,6 @@ void ChromeContentRendererClient::RenderFrameCreated(
+   RenderFrame* render_frame) {
+   new ChromeRenderFrameObserver(render_frame);
+ 
+-  // Check for automation mode
+-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+-          switches::kEnableAutomation)) {
+-    new AutomationRenderFrameObserver(render_frame);
+-  }
+-
+   // Install WebView plugin if enabled.
+   bool enable_plugins = true;
+ #if BUILDFLAG(IS_ANDROID)

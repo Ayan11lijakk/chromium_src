@@ -1,0 +1,17 @@
+diff --git a/chrome/browser/devtools/devtools_window.cc b/chrome/browser/devtools/devtools_window.cc
+index 8901234..hijklmn 100644
+--- a/chrome/browser/devtools/devtools_window.cc
++++ b/chrome/browser/devtools/devtools_window.cc
+@@ -298,6 +298,15 @@ void DevToolsWindow::Create(
+     const std::string& panel,
+     bool has_other_clients,
+     bool can_dock) {
++
++  // CDP Stealth: Block DevTools window creation
++  LOG(WARNING) << "DevTools window creation blocked in stealth mode";
++  if (callback) {
++    std::move(callback).Run(nullptr);
++  }
++  return;
++
+   Profile* profile = Profile::FromBrowserContext(

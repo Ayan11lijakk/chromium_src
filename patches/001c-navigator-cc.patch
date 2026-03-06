@@ -1,0 +1,18 @@
+diff --git a/third_party/blink/renderer/core/frame/navigator.cc b/third_party/blink/renderer/core/frame/navigator.cc
+index 3456789..cdefghi 100644
+--- a/third_party/blink/renderer/core/frame/navigator.cc
++++ b/third_party/blink/renderer/core/frame/navigator.cc
+@@ -158,13 +158,6 @@ String Navigator::productSub() const {
+   return "20030107";
+ }
+ 
+-bool Navigator::webdriver() const {
+-  if (!GetFrame())
+-    return false;
+-  Document* document = GetFrame()->GetDocument();
+-  return document && document->IsWebDriver();
+-}
+-
+ String Navigator::vendor() const {
+ #if BUILDFLAG(IS_ANDROID)
+   return "Google Inc.";

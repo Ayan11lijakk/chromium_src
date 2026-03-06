@@ -1,0 +1,43 @@
+diff --git a/third_party/blink/renderer/bindings/core/v8/v8_initializer.cc b/third_party/blink/renderer/bindings/core/v8/v8_initializer.cc
+index 8901234..rstuvwx 100644
+--- a/third_party/blink/renderer/bindings/core/v8/v8_initializer.cc
++++ b/third_party/blink/renderer/bindings/core/v8/v8_initializer.cc
+@@ -445,6 +445,34 @@ static void InitializeV8Common(v8::Isolate* isolate) {
+   v8::V8::AddMessageListener(MessageHandlerInMainThread);
+ }
+ 
++// Remove automation detection variables
++static void RemoveAutomationVariables(v8::Local<v8::Context> context) {
++  v8::Isolate* isolate = context->GetIsolate();
++  v8::Local<v8::Object> global = context->Global();
++
++  const char* automation_vars[] = {
++    "$cdc_", "$chrome_", "__webdriver_",
++    "__selenium_", "__fxdriver_", "__driver_",
++    "__webdriver_script_fn", "__webdriver_script_func",
++    "__webdriver_unwrapped", "__webdriver_evaluate",
++    "__driver_evaluate", "__webdriver_script_function",
++    "calledSelenium", "_Selenium_", "_phantom",
++    "__nightmare", "callPhantom", "_phantom",
++    "phantom", "spawn"
++  };
++
++  v8::TryCatch try_catch(isolate);
++  for (const char* var : automation_vars) {
++    v8::Local<v8::String> key =
++        v8::String::NewFromUtf8(isolate, var).ToLocalChecked();
++    v8::Maybe<bool> result = global->Delete(context, key);
++  }
++}
++
+ void V8Initializer::InitializeMainThread(const intptr_t* reference_table) {
+   DCHECK(IsMainThread());
+ 
+@@ -458,6 +486,9 @@ void V8Initializer::InitializeMainThread(const intptr_t* reference_table) {
+ 
+   InitializeV8Common(isolate);
+ 
++  // Remove automation detection variables from all contexts
++  RemoveAutomationVariables(isolate->GetCurrentContext());
++
+   isolate->SetMicrotasksPolicy(v8::MicrotasksPolicy::kScoped);

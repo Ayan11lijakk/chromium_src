@@ -1,0 +1,10 @@
+diff --git a/content/public/common/content_switches.h b/content/public/common/content_switches.h
+index 6789012..fghijkl 100644
+--- a/content/public/common/content_switches.h
++++ b/content/public/common/content_switches.h
+@@ -68,7 +68,6 @@ CONTENT_EXPORT extern const char kEnableAccessibilityObjectModel[];
+ CONTENT_EXPORT extern const char kEnableAggressiveDOMStorageFlushing[];
+-CONTENT_EXPORT extern const char kEnableAutomation[];
+ CONTENT_EXPORT extern const char kEnableCanvas2DImageChromium[];
+ CONTENT_EXPORT extern const char kEnableColorCorrectedRendering[];
+ CONTENT_EXPORT extern const char kEnableCrashReporter[];

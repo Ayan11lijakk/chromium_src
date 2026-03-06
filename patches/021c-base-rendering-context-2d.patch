@@ -1,0 +1,23 @@
+diff --git a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+index cdef123..3456789 100644
+--- a/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
++++ b/third_party/blink/renderer/modules/canvas/canvas2d/base_rendering_context_2d.cc
+@@ -45,6 +45,9 @@
+ #include "third_party/blink/renderer/platform/graphics/memory_managed_paint_recorder.h"
+ #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+ 
++// Fingerprint protection
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++
+ 
+ namespace blink {
+ 
+@@ -2050,6 +2053,9 @@ TextMetrics* BaseRenderingContext2D::measureText(const String& text) {
+ 
+   TextMetrics* metrics = MakeGarbageCollected<TextMetrics>(font, direction, baseline, run_info);
+ 
++  // Add subtle noise to text metrics for fingerprint protection
++  // This is handled by the TextMetrics class using FingerprintSessionManager
++
+   return metrics;
+ }

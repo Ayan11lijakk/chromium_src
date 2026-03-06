@@ -1,0 +1,59 @@
+diff --git a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+index 7777777..8888888 100644
+--- a/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
++++ b/third_party/blink/renderer/modules/webaudio/offline_audio_context.cc
+@@ -34,6 +34,10 @@
+ #include "third_party/blink/renderer/platform/bindings/exception_state.h"
+ #include "third_party/blink/renderer/platform/heap/persistent.h"
+ 
++// Fingerprint protection integration
++#include "content/browser/fingerprint/fingerprint_session_manager.h"
++#include <random>
++
+ 
+ namespace blink {
+ 
+@@ -189,6 +193,42 @@ void OfflineAudioContext::DidSuspend(ScriptPromiseResolver* resolver) {
+   resolver->Resolve();
+ }
+ 
++// =============================================================================
++// OFFLINE AUDIO CONTEXT FINGERPRINT PROTECTION
++// =============================================================================
++
++namespace {
++
++void AddOfflineAudioNoise(AudioBuffer* buffer) {
++  if (!buffer) return;
++  auto& session = content::FingerprintSessionManager::GetInstance();
++  float noise_level = session.GetAudioAnalyserNoise();
++  uint64_t seed = session.GetSessionSeed();
++  if (noise_level <= 0) return;
++  std::mt19937_64 gen(seed + 0x4F46464C);
++  std::uniform_real_distribution<float> dist(-noise_level * 0.1f, noise_level * 0.1f);
++  for (unsigned channel = 0; channel < buffer->numberOfChannels(); ++channel) {
++    DOMFloat32Array* channel_data = buffer->getChannelData(channel);
++    if (!channel_data) continue;
++    float* data = channel_data->Data();
++    size_t length = channel_data->length();
++    for (size_t i = 0; i < length; ++i) {
++      data[i] += dist(gen);
++    }
++  }
++}
++
++}  // namespace
++
+ void OfflineAudioContext::DidFinishRendering(AudioBuffer* rendered_buffer) {
+   DCHECK(IsMainThread());
+ 
+@@ -201,6 +241,11 @@ void OfflineAudioContext::DidFinishRendering(AudioBuffer* rendered_buffer) {
+   if (!is_rendering_started_)
+     return;
+ 
++  // ==========================================================================
++  // OFFLINE AUDIO FINGERPRINT PROTECTION
++  // ==========================================================================
++  AddOfflineAudioNoise(rendered_buffer);
++
+   // All promises are resolved at once.

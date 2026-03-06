@@ -44,29 +44,20 @@ jobs:
         uses: actions/cache@v4
         with:
           path: chromium_src
-          key: chromium-win-${{ env.CHROMIUM_VERSION }}-v5
+          key: chromium-win-${{ env.CHROMIUM_VERSION }}-v7
 
       - name: Fetch Chromium Source
         if: steps.cache_src.outputs.cache-hit != 'true'
         shell: powershell
         run: |
           $env:PATH = "C:\depot_tools;$env:PATH"
-          $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "1"
+          $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "0"
           $env:GYP_MSVS_VERSION = "2022"
 
           New-Item -ItemType Directory -Force -Path chromium_src
           Set-Location chromium_src
 
-          $gclientContent = "solutions = [`n" +
-            "  {`n" +
-            "    `"name`": `"src`",`n" +
-            "    `"url`": `"https://chromium.googlesource.com/chromium/src.git`",`n" +
-            "    `"managed`": False,`n" +
-            "    `"custom_deps`": {},`n" +
-            "    `"custom_vars`": {},`n" +
-            "  },`n" +
-            "]`n" +
-            "target_os = ['win']`n"
+          $gclientContent = "solutions = [`n  {`n    `"name`": `"src`",`n    `"url`": `"https://chromium.googlesource.com/chromium/src.git`",`n    `"managed`": False,`n    `"custom_deps`": {},`n    `"custom_vars`": {},`n  },`n]`ntarget_os = ['win']`n"
 
           [System.IO.File]::WriteAllText(
             "$PWD\.gclient",
@@ -98,7 +89,6 @@ jobs:
           $env:GYP_MSVS_VERSION = "2022"
 
           Set-Location chromium_src\src
-
           python build/vs_toolchain.py update --force
 
           if ($LASTEXITCODE -ne 0) {
@@ -162,9 +152,10 @@ jobs:
           apply_single_patch() {
             local pf="$1"
 
-            # Clean: CRLF→LF, fake index remove
             local CLEAN
             CLEAN=$(mktemp /tmp/clean_XXXXXX.patch)
+
+            # CRLF→LF, fake index remove
             sed 's/\r//' "$pf" | \
             sed '/^index [0-9a-f]\{7,40\}\.\.[0-9a-f]\{7,40\}/d' \
             > "$CLEAN"
@@ -176,7 +167,7 @@ jobs:
               return 2
             fi
 
-            # Pre-create directories for new files in patch
+            # Pre-create directories for new files
             grep '^+++ b/' "$CLEAN" | sed 's|^+++ b/||' | while read -r fpath; do
               local dir
               dir="$(dirname "$fpath")"
@@ -187,40 +178,43 @@ jobs:
             done
 
             # Method 1: git apply
-            if git apply \
-               --ignore-whitespace \
-               --whitespace=fix \
-               "$CLEAN" 2>/dev/null; then
+            if git apply --ignore-whitespace --whitespace=fix "$CLEAN" 2>/dev/null; then
               echo "  ✓ git apply"
               rm -f "$CLEAN"
               return 0
             fi
 
             # Method 2: git apply 3way
-            if git apply \
-               --3way \
-               --ignore-whitespace \
-               --whitespace=fix \
-               "$CLEAN" 2>/dev/null; then
+            if git apply --3way --ignore-whitespace --whitespace=fix "$CLEAN" 2>/dev/null; then
               echo "  ✓ git apply 3way"
               rm -f "$CLEAN"
               return 0
             fi
 
-            # Method 3: patch with fuzz
-            # exit code 0 = clean, 1 = fuzz/offset used (still OK), 2 = error
-            patch -p1 \
-              --fuzz=10 \
-              --ignore-whitespace \
-              --no-backup-if-mismatch \
-              --forward \
-              -i "$CLEAN" 2>/dev/null
-            local patch_rc=$?
+            # Method 3: patch fuzz=3
+            patch -p1 --fuzz=3 --ignore-whitespace --no-backup-if-mismatch --forward -i "$CLEAN" 2>/dev/null
+            local rc=$?
+            if [ $rc -le 1 ]; then
+              echo "  ✓ patch fuzz=3 (rc=$rc)"
+              rm -f "$CLEAN"
+              return 0
+            fi
 
+            # Method 4: patch fuzz=10
+            patch -p1 --fuzz=10 --ignore-whitespace --no-backup-if-mismatch --forward -i "$CLEAN" 2>/dev/null
+            rc=$?
+            if [ $rc -le 1 ]; then
+              echo "  ✓ patch fuzz=10 (rc=$rc)"
+              rm -f "$CLEAN"
+              return 0
+            fi
+
+            # Method 5: patch fuzz=10 --forward ছাড়া
+            patch -p1 --fuzz=10 --ignore-whitespace --no-backup-if-mismatch -i "$CLEAN" 2>/dev/null
+            rc=$?
             rm -f "$CLEAN"
-
-            if [ $patch_rc -le 1 ]; then
-              echo "  ✓ patch fuzz=10 (rc=$patch_rc)"
+            if [ $rc -le 1 ]; then
+              echo "  ✓ patch fuzz=10 no-forward (rc=$rc)"
               return 0
             fi
 
@@ -271,24 +265,27 @@ jobs:
           Set-Location chromium_src\src
           New-Item -ItemType Directory -Force -Path out\Release
 
-          $argsContent = @'
-          target_os = "win"
-          target_cpu = "x64"
-          is_debug = false
-          is_official_build = true
-          is_component_build = false
-          is_clang = true
-          use_lld = true
-          symbol_level = 0
-          blink_symbol_level = 0
-          enable_nacl = false
-          proprietary_codecs = true
-          ffmpeg_branding = "Chrome"
-          enable_automation = false
-          enable_pdf = false
-          enable_print_preview = false
-          treat_warnings_as_errors = false
-          fatal_linker_warnings = false'@
+          $line1  = 'target_os = "win"'
+          $line2  = 'target_cpu = "x64"'
+          $line3  = 'is_debug = false'
+          $line4  = 'is_official_build = true'
+          $line5  = 'is_component_build = false'
+          $line6  = 'is_clang = true'
+          $line7  = 'use_lld = true'
+          $line8  = 'symbol_level = 0'
+          $line9  = 'blink_symbol_level = 0'
+          $line10 = 'enable_nacl = false'
+          $line11 = 'proprietary_codecs = true'
+          $line12 = 'ffmpeg_branding = "Chrome"'
+          $line13 = 'enable_automation = false'
+          $line14 = 'enable_pdf = false'
+          $line15 = 'enable_print_preview = false'
+          $line16 = 'treat_warnings_as_errors = false'
+          $line17 = 'fatal_linker_warnings = false'
+
+          $argsContent = ($line1,$line2,$line3,$line4,$line5,$line6,$line7,
+                          $line8,$line9,$line10,$line11,$line12,$line13,
+                          $line14,$line15,$line16,$line17) -join "`n"
 
           [System.IO.File]::WriteAllText(
             "$PWD\out\Release\args.gn",
@@ -296,7 +293,13 @@ jobs:
             [System.Text.UTF8Encoding]::new($false)
           )
 
+          Write-Host "=== args.gn ==="
+          Get-Content out\Release\args.gn
+          Write-Host "==============="
+
           gclient runhooks
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
           gn gen out\Release
           if ($LASTEXITCODE -ne 0) { exit 1 }
 

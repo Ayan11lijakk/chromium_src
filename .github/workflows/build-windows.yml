@@ -1,0 +1,365 @@
+
+name: Build Chromium Windows EXE
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+env:
+  CHROMIUM_VERSION: "139.0.7258.154"
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 1440
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Configure Git
+        shell: powershell
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.filemode false
+          git config --global core.fscache true
+          git config --global core.preloadindex true
+          git config --global user.email "build@chromium.local"
+          git config --global user.name "Chromium Builder"
+          git config --global depot-tools.allowGlobalGitConfig true
+
+      - name: Install depot_tools
+        shell: powershell
+        run: |
+          git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git C:\depot_tools
+          echo "C:\depot_tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Cache Chromium Source
+        id: cache_src
+        uses: actions/cache@v4
+        with:
+          path: chromium_src
+          key: chromium-win-${{ env.CHROMIUM_VERSION }}-v5
+
+      - name: Fetch Chromium Source
+        if: steps.cache_src.outputs.cache-hit != 'true'
+        shell: powershell
+        run: |
+          $env:PATH = "C:\depot_tools;$env:PATH"
+          $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "1"
+          $env:GYP_MSVS_VERSION = "2022"
+
+          New-Item -ItemType Directory -Force -Path chromium_src
+          Set-Location chromium_src
+
+          # .gclient — NO indentation, NO BOM
+          $gclientContent = "solutions = [`n" +
+            "  {`n" +
+            "    `"name`": `"src`",`n" +
+            "    `"url`": `"https://chromium.googlesource.com/chromium/src.git`",`n" +
+            "    `"managed`": False,`n" +
+            "    `"custom_deps`": {},`n" +
+            "    `"custom_vars`": {},`n" +
+            "  },`n" +
+            "]`n" +
+            "target_os = ['win']`n"
+
+          [System.IO.File]::WriteAllText(
+            "$PWD\.gclient",
+            $gclientContent,
+            [System.Text.UTF8Encoding]::new($false)
+          )
+
+          # Verify
+          Write-Host "=== .gclient content ==="
+          Get-Content .gclient
+          Write-Host "========================"
+
+          gclient sync `
+            --no-history `
+            --nohooks `
+            --with_branch_heads `
+            --with_tags `
+            -r "src@refs/tags/$env:CHROMIUM_VERSION"
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "gclient sync failed!"
+            exit 1
+          }
+
+      - name: Setup VS Toolchain
+        shell: powershell
+        run: |
+          $env:PATH = "C:\depot_tools;$env:PATH"
+          $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "0"
+          $env:GYP_MSVS_VERSION = "2022"
+
+          Set-Location chromium_src\src
+
+          # System VS ব্যবহার করো, Google Cloud থেকে না
+          python build/vs_toolchain.py update --force
+
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "vs_toolchain.py failed, continuing with system VS..."
+          }
+
+      # ─────────────────────────────────────────
+      # FIXED Patch Apply — git apply ব্যবহার করে
+      # ─────────────────────────────────────────
+      - name: Apply Patches
+        shell: bash
+        run: |
+          PATCHES_DIR="${{ github.workspace }}/patches"
+          SRC="${{ github.workspace }}/chromium_src/src"
+          cd "$SRC"
+
+          APPLIED=0
+          FAILED=0
+          SKIPPED=0
+
+          PATCH_ORDER=(
+          "000a-build-gn.patch"
+          "000b-fingerprint-header.patch"
+          "000c-fingerprint-impl.patch"
+          "000d-content-switches-cc.patch"
+          "000e-content-switches-h.patch"
+          "001a-navigator-idl.patch"
+          "001b-navigator-h.patch"
+          "001c-navigator-cc.patch"
+          "002a-chrome-content-browser-client.patch"
+          "002b-content-switches-cc.patch"
+          "002c-content-switches-h.patch"
+          "002d-chrome-content-renderer-client.patch"
+          "021a-canvas-rendering-context-2d.patch"
+          "021b-html-canvas-element.patch"
+          "021c-base-rendering-context-2d.patch"
+          "022a-navigator-cc.patch"
+          "022b-navigator-concurrent-hardware.patch"
+          "022c-navigator-device-memory.patch"
+          "022d-navigator-id.patch"
+          "023a-webgl-rendering-context-base.patch"
+          "023b-webgl2-rendering-context-base.patch"
+          "023c-webgl-debug-renderer-info.patch"
+          "024a-analyser-node.patch"
+          "024b-oscillator-node.patch"
+          "024c-dynamics-compressor-node.patch"
+          "024d-offline-audio-context.patch"
+          "025a-screen.patch"
+          "025b-window.patch"
+          "auto-a-chrome-launcher.patch"
+          "auto-b-render-frame-host.patch"
+          "auto-c-web-view-impl.patch"
+          "auto-d-v8-initializer.patch"
+          "cdp-a-devtools-http-handler.patch"
+          "cdp-b-inspector-dom-agent.patch"
+          "cdp-c-v8-console.patch"
+          "cdp-d-devtools-window.patch"
+          "cdp-e-browser-handler.patch"
+          "cdp-f-navigator-webdriver.patch"
+          "permissions-stealth.patch"
+
+          )
+
+          apply_single_patch() {
+            local pf="$1"
+            local name="$(basename $pf)"
+
+            # Clean: CRLF→LF, fake index remove
+            local CLEAN=$(mktemp /tmp/clean_XXXXXX.patch)
+            sed 's/\r//' "$pf" | \
+            sed '/^index [0-9a-f]\{7,40\}\.\.[0-9a-f]\{7,40\}/d' \
+            > "$CLEAN"
+
+            # Already applied → skip
+            if git apply --check --reverse "$CLEAN" 2>/dev/null; then
+              echo "  ⚠ Already applied — skipping"
+              rm -f "$CLEAN"
+              return 2
+            fi
+
+            # ── Pre-create directories for new files in patch ──
+            grep '^+++ b/' "$CLEAN" | sed 's|^+++ b/||' | while read -r fpath; do
+              local dir
+              dir="$(dirname "$fpath")"
+              if [ ! -d "$dir" ]; then
+                echo "  📁 Creating directory: $dir"
+                mkdir -p "$dir"
+              fi
+            done
+
+            # Method 1: git apply (handles new files + multi-file diffs)
+            if git apply \
+               --ignore-whitespace \
+               --whitespace=fix \
+               "$CLEAN" 2>/dev/null; then
+              echo "  ✓ git apply"
+              rm -f "$CLEAN"
+              return 0
+            fi
+
+            # Method 2: git apply verbose (see actual error)
+            local ERRLOG
+            ERRLOG=$(mktemp /tmp/err_XXXXXX.log)
+            if git apply \
+               --ignore-whitespace \
+               --whitespace=fix \
+               "$CLEAN" 2>"$ERRLOG"; then
+              echo "  ✓ git apply (retry)"
+              rm -f "$CLEAN" "$ERRLOG"
+              return 0
+            fi
+            echo "  ⚠ git apply error: $(cat $ERRLOG)"
+            rm -f "$ERRLOG"
+
+            # Method 3: git apply 3way
+            if git apply \
+               --3way \
+               --ignore-whitespace \
+               --whitespace=fix \
+               "$CLEAN" 2>/dev/null; then
+              echo "  ✓ git apply 3way"
+              rm -f "$CLEAN"
+              return 0
+            fi
+
+            # Method 4: patch with fuzz
+            if patch -p1 \
+               --fuzz=10 \
+               --ignore-whitespace \
+               --no-backup-if-mismatch \
+               --forward \
+               -i "$CLEAN" 2>/dev/null; then
+              echo "  ✓ patch fuzz=10"
+              rm -f "$CLEAN"
+              return 0
+            fi
+
+            rm -f "$CLEAN"
+            return 1
+          }
+
+          for patch_name in "${PATCH_ORDER[@]}"; do
+            patch_file="$PATCHES_DIR/$patch_name"
+            echo "──────────────────────────────"
+            echo "▶ $patch_name"
+
+            if [ ! -f "$patch_file" ]; then
+              echo "  ⚠ Not found — skipping"
+              ((SKIPPED++))
+              continue
+            fi
+
+            apply_single_patch "$patch_file"
+            rc=$?
+
+            if [ $rc -eq 0 ]; then
+              ((APPLIED++))
+            elif [ $rc -eq 2 ]; then
+              ((SKIPPED++))
+            else
+              echo "  ✗ FAILED (build continues)"
+              find . -name "*.rej" -delete 2>/dev/null || true
+              ((FAILED++))
+            fi
+          done
+
+          echo ""
+          echo "══════════════════════════════"
+          echo "✓ Applied : $APPLIED"
+          echo "✗ Failed  : $FAILED"
+          echo "⚠ Skipped : $SKIPPED"
+          echo "══════════════════════════════"
+
+          find . -name "*.rej" -delete 2>/dev/null || true
+                    
+                  
+
+      - name: Configure GN
+        shell: powershell
+        run: |
+          $env:PATH = "C:\depot_tools;$env:PATH"
+          $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "1"
+          $env:GYP_MSVS_VERSION = "2022"
+
+          Set-Location chromium_src\src
+          New-Item -ItemType Directory -Force -Path out\Release
+
+          $argsContent = @'
+          target_os = "win"
+          target_cpu = "x64"
+          is_debug = false
+          is_official_build = true
+          is_component_build = false
+          is_clang = true
+          use_lld = true
+          symbol_level = 0
+          blink_symbol_level = 0
+          enable_nacl = false
+          proprietary_codecs = true
+          ffmpeg_branding = "Chrome"
+          enable_automation = false
+          enable_pdf = false
+          enable_print_preview = false
+          treat_warnings_as_errors = false
+          fatal_linker_warnings = false'@
+       
+          [System.IO.File]::WriteAllText(
+            "$PWD\out\Release\args.gn",
+            $argsContent,
+            [System.Text.UTF8Encoding]::new($false)
+          )
+
+          gclient runhooks
+          gn gen out\Release
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Build Chromium
+        shell: powershell
+        run: |
+          $env:PATH = "C:\depot_tools;$env:PATH"
+          $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "1"
+
+          Set-Location chromium_src\src
+
+          $cores = (Get-CimInstance Win32_Processor).NumberOfLogicalProcessors
+          $jobs = [math]::Max(1, $cores - 2)
+          Write-Host "Building with $jobs jobs..."
+
+          autoninja -j $jobs -C out\Release chrome chromedriver
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+
+      - name: Package
+        shell: powershell
+        run: |
+          Set-Location chromium_src\src\out\Release
+          New-Item -ItemType Directory -Force -Path pkg
+
+          @("chrome.exe","chromedriver.exe","chrome.dll",
+            "chrome_elf.dll","icudtl.dat","v8_context_snapshot.bin",
+            "snapshot_blob.bin") | ForEach-Object {
+            if (Test-Path $_) { Copy-Item $_ pkg\ }
+          }
+
+          Get-ChildItem *.pak -EA 0 | Copy-Item -Dest pkg\
+          Get-ChildItem *.bin -EA 0 | Copy-Item -Dest pkg\
+          if (Test-Path locales) { Copy-Item -Recurse locales pkg\ }
+
+          Compress-Archive -Path pkg -DestinationPath antidetect-chromium-win-x64.zip -Force
+          $h = Get-FileHash antidetect-chromium-win-x64.zip -Algorithm SHA256
+          "$($h.Hash)  antidetect-chromium-win-x64.zip" |
+            Out-File antidetect-chromium-win-x64.zip.sha256
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: antidetect-chromium-windows-x64
+          path: |
+            chromium_src/src/out/Release/antidetect-chromium-win-x64.zip
+            chromium_src/src/out/Release/antidetect-chromium-win-x64.zip.sha256
+          retention-days: 30

@@ -1,4 +1,3 @@
-
 name: Build Chromium Windows EXE
 
 on:
@@ -58,7 +57,6 @@ jobs:
           New-Item -ItemType Directory -Force -Path chromium_src
           Set-Location chromium_src
 
-          # .gclient — NO indentation, NO BOM
           $gclientContent = "solutions = [`n" +
             "  {`n" +
             "    `"name`": `"src`",`n" +
@@ -76,7 +74,6 @@ jobs:
             [System.Text.UTF8Encoding]::new($false)
           )
 
-          # Verify
           Write-Host "=== .gclient content ==="
           Get-Content .gclient
           Write-Host "========================"
@@ -102,16 +99,12 @@ jobs:
 
           Set-Location chromium_src\src
 
-          # System VS ব্যবহার করো, Google Cloud থেকে না
           python build/vs_toolchain.py update --force
 
           if ($LASTEXITCODE -ne 0) {
             Write-Warning "vs_toolchain.py failed, continuing with system VS..."
           }
 
-      # ─────────────────────────────────────────
-      # FIXED Patch Apply — git apply ব্যবহার করে
-      # ─────────────────────────────────────────
       - name: Apply Patches
         shell: bash
         run: |
@@ -124,54 +117,53 @@ jobs:
           SKIPPED=0
 
           PATCH_ORDER=(
-          "000a-build-gn.patch"
-          "000b-fingerprint-header.patch"
-          "000c-fingerprint-impl.patch"
-          "000d-content-switches-cc.patch"
-          "000e-content-switches-h.patch"
-          "001a-navigator-idl.patch"
-          "001b-navigator-h.patch"
-          "001c-navigator-cc.patch"
-          "002a-chrome-content-browser-client.patch"
-          "002b-content-switches-cc.patch"
-          "002c-content-switches-h.patch"
-          "002d-chrome-content-renderer-client.patch"
-          "021a-canvas-rendering-context-2d.patch"
-          "021b-html-canvas-element.patch"
-          "021c-base-rendering-context-2d.patch"
-          "022a-navigator-cc.patch"
-          "022b-navigator-concurrent-hardware.patch"
-          "022c-navigator-device-memory.patch"
-          "022d-navigator-id.patch"
-          "023a-webgl-rendering-context-base.patch"
-          "023b-webgl2-rendering-context-base.patch"
-          "023c-webgl-debug-renderer-info.patch"
-          "024a-analyser-node.patch"
-          "024b-oscillator-node.patch"
-          "024c-dynamics-compressor-node.patch"
-          "024d-offline-audio-context.patch"
-          "025a-screen.patch"
-          "025b-window.patch"
-          "auto-a-chrome-launcher.patch"
-          "auto-b-render-frame-host.patch"
-          "auto-c-web-view-impl.patch"
-          "auto-d-v8-initializer.patch"
-          "cdp-a-devtools-http-handler.patch"
-          "cdp-b-inspector-dom-agent.patch"
-          "cdp-c-v8-console.patch"
-          "cdp-d-devtools-window.patch"
-          "cdp-e-browser-handler.patch"
-          "cdp-f-navigator-webdriver.patch"
-          "permissions-stealth.patch"
-
+            "000a-build-gn.patch"
+            "000b-fingerprint-header.patch"
+            "000c-fingerprint-impl.patch"
+            "000d-content-switches-cc.patch"
+            "000e-content-switches-h.patch"
+            "001a-navigator-idl.patch"
+            "001b-navigator-h.patch"
+            "001c-navigator-cc.patch"
+            "002a-chrome-content-browser-client.patch"
+            "002b-content-switches-cc.patch"
+            "002c-content-switches-h.patch"
+            "002d-chrome-content-renderer-client.patch"
+            "021a-canvas-rendering-context-2d.patch"
+            "021b-html-canvas-element.patch"
+            "021c-base-rendering-context-2d.patch"
+            "022a-navigator-cc.patch"
+            "022b-navigator-concurrent-hardware.patch"
+            "022c-navigator-device-memory.patch"
+            "022d-navigator-id.patch"
+            "023a-webgl-rendering-context-base.patch"
+            "023b-webgl2-rendering-context-base.patch"
+            "023c-webgl-debug-renderer-info.patch"
+            "024a-analyser-node.patch"
+            "024b-oscillator-node.patch"
+            "024c-dynamics-compressor-node.patch"
+            "024d-offline-audio-context.patch"
+            "025a-screen.patch"
+            "025b-window.patch"
+            "auto-a-chrome-launcher.patch"
+            "auto-b-render-frame-host.patch"
+            "auto-c-web-view-impl.patch"
+            "auto-d-v8-initializer.patch"
+            "cdp-a-devtools-http-handler.patch"
+            "cdp-b-inspector-dom-agent.patch"
+            "cdp-c-v8-console.patch"
+            "cdp-d-devtools-window.patch"
+            "cdp-e-browser-handler.patch"
+            "cdp-f-navigator-webdriver.patch"
+            "permissions-stealth.patch"
           )
 
           apply_single_patch() {
             local pf="$1"
-            local name="$(basename $pf)"
 
             # Clean: CRLF→LF, fake index remove
-            local CLEAN=$(mktemp /tmp/clean_XXXXXX.patch)
+            local CLEAN
+            CLEAN=$(mktemp /tmp/clean_XXXXXX.patch)
             sed 's/\r//' "$pf" | \
             sed '/^index [0-9a-f]\{7,40\}\.\.[0-9a-f]\{7,40\}/d' \
             > "$CLEAN"
@@ -183,7 +175,7 @@ jobs:
               return 2
             fi
 
-            # ── Pre-create directories for new files in patch ──
+            # Pre-create directories for new files in patch
             grep '^+++ b/' "$CLEAN" | sed 's|^+++ b/||' | while read -r fpath; do
               local dir
               dir="$(dirname "$fpath")"
@@ -193,7 +185,7 @@ jobs:
               fi
             done
 
-            # Method 1: git apply (handles new files + multi-file diffs)
+            # Method 1: git apply
             if git apply \
                --ignore-whitespace \
                --whitespace=fix \
@@ -203,21 +195,7 @@ jobs:
               return 0
             fi
 
-            # Method 2: git apply verbose (see actual error)
-            local ERRLOG
-            ERRLOG=$(mktemp /tmp/err_XXXXXX.log)
-            if git apply \
-               --ignore-whitespace \
-               --whitespace=fix \
-               "$CLEAN" 2>"$ERRLOG"; then
-              echo "  ✓ git apply (retry)"
-              rm -f "$CLEAN" "$ERRLOG"
-              return 0
-            fi
-            echo "  ⚠ git apply error: $(cat $ERRLOG)"
-            rm -f "$ERRLOG"
-
-            # Method 3: git apply 3way
+            # Method 2: git apply 3way
             if git apply \
                --3way \
                --ignore-whitespace \
@@ -228,19 +206,23 @@ jobs:
               return 0
             fi
 
-            # Method 4: patch with fuzz
-            if patch -p1 \
-               --fuzz=10 \
-               --ignore-whitespace \
-               --no-backup-if-mismatch \
-               --forward \
-               -i "$CLEAN" 2>/dev/null; then
-              echo "  ✓ patch fuzz=10"
-              rm -f "$CLEAN"
+            # Method 3: patch with fuzz
+            # exit code 0 = clean, 1 = fuzz/offset used (still OK), 2 = error
+            patch -p1 \
+              --fuzz=10 \
+              --ignore-whitespace \
+              --no-backup-if-mismatch \
+              --forward \
+              -i "$CLEAN" 2>/dev/null
+            local patch_rc=$?
+
+            rm -f "$CLEAN"
+
+            if [ $patch_rc -le 1 ]; then
+              echo "  ✓ patch fuzz=10 (rc=$patch_rc)"
               return 0
             fi
 
-            rm -f "$CLEAN"
             return 1
           }
 
@@ -277,14 +259,12 @@ jobs:
           echo "══════════════════════════════"
 
           find . -name "*.rej" -delete 2>/dev/null || true
-                    
-                  
 
       - name: Configure GN
         shell: powershell
         run: |
           $env:PATH = "C:\depot_tools;$env:PATH"
-          $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "1"
+          $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "0"
           $env:GYP_MSVS_VERSION = "2022"
 
           Set-Location chromium_src\src
@@ -308,7 +288,7 @@ jobs:
           enable_print_preview = false
           treat_warnings_as_errors = false
           fatal_linker_warnings = false'@
-       
+
           [System.IO.File]::WriteAllText(
             "$PWD\out\Release\args.gn",
             $argsContent,
@@ -323,7 +303,7 @@ jobs:
         shell: powershell
         run: |
           $env:PATH = "C:\depot_tools;$env:PATH"
-          $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "1"
+          $env:DEPOT_TOOLS_WIN_TOOLCHAIN = "0"
 
           Set-Location chromium_src\src
 
